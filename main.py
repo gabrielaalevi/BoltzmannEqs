@@ -7,6 +7,7 @@ from modelParameters import particlesDict, T0, Tlist
 from scipy.integrate import odeint
 import matplotlib.pyplot as plt
 import logging as logger
+import numpy as np
 
 
    
@@ -31,7 +32,8 @@ def main(partDict,verbose):
 
     sol = odeint(boltz, y0, x, args=(comp_list,),
                  atol = 10**(-16), rtol = 10**(-14))
-    
+    # Save output
+    np.savetxt('outputFile.csv',)
 
 
     sol_dm = []
