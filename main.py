@@ -1,34 +1,58 @@
-#example main
+#!/usr/bin/env python3
 
-import math
-import numpy as np
-import BoltzmannEq
-import Components
-import AuxFunc
-import ModelParameters
+from boltzmannEq import boltz
+from components import Component
+import auxFunc
+from modelParameters import particlesDict, T0, Tlist
 from scipy.integrate import odeint
 import matplotlib.pyplot as plt
+import logging as logger
 
 
-dm = Components.Component(label = 'dm', ID = 0, active = ModelParameters.ActiveList[0], g = ModelParameters.gDM, mass = ModelParameters.mDM, decaywidth = 0, decayproducts = 0, br = 0, collision = ModelParameters.CollisionDM, collisionproducts = ModelParameters.CollisionProductsDM, sigmaV = ModelParameters.CollisionSigmaVDM)
-mediator = Components.Component(label = 'mediator', ID = 1, active = ModelParameters.ActiveList[1], g = ModelParameters.gMediator, mass = ModelParameters.mMediator, decaywidth = ModelParameters.decaywidthMediator, decayproducts = ModelParameters.DecayProductsMediator, br = ModelParameters.DecayBRMediator, collision = ModelParameters.CollisionMediator, collisionproducts = ModelParameters.CollisionProductsMediator, sigmaV = ModelParameters.CollisionSigmaVMediator)
+   
 
-comp_list = [dm, mediator]
+def main(partDict,verbose):
 
-y0_dm = AuxFunc.equilibrium_yield(ModelParameters.mDM, ModelParameters.T[0], ModelParameters.gDM)
-y0_mediator = AuxFunc.equilibrium_yield(ModelParameters.mMediator, ModelParameters.T[0], ModelParameters.gMediator)
-x = ModelParameters.mDM/ModelParameters.T
+    comp_list = []
+    for label,pDict in partDict.items():
+        comp = Component.from_dict(label,pDict)
+        comp_list.append(comp)
 
-sol = odeint(BoltzmannEq.BoltzmannEq.Boltz, [y0_dm,y0_mediator], x, args=(comp_list,), atol = 10**(-16), rtol = 10**(-14))
+    y0 = [comp.equilibrium_yield(T0) for comp in comp_list]
 
-sol_dm = []
-sol_mediator = []
+    dmList = [comp for comp in comp_list if comp.decay_width == 0.0]
+    if len(dm) != 1:
+        logger.error('A unique DM component must be defined')
+        raise ValueError()
+    dm = dm[0]
 
-for i in range(0, len(ModelParameters.T)):
-    sol_dm.append(sol[i][0])
-    sol_mediator.append(sol[i][1])
 
-plt.plot(x, sol_dm)
-plt.yscale('log')
-plt.xscale('log')
-plt.grid()
+    x = dm.mass/Tlist
+
+    sol = odeint(boltz, y0, x, args=(comp_list,),
+                 atol = 10**(-16), rtol = 10**(-14))
+    
+
+
+    sol_dm = []
+    sol_mediator = []
+
+    for i in range(0, len(Tlist)):
+        sol_dm.append(sol[i][0])
+        sol_mediator.append(sol[i][1])
+
+    return x,sol
+
+if __name__ == "__main__":
+
+    import argparse    
+    ap = argparse.ArgumentParser( description=
+            "Solve Boltzmann equations." )
+    ap.add_argument('-p', '--parfile', default='parameters.ini',
+            help='path to the parameters file [parameters.ini].')
+    ap.add_argument('-v', '--verbose', default='info',
+            help='verbose level (debug, info, warning or error). Default is info')
+
+
+    args = ap.parse_args()
+    output = main(args.parfile,args.verbose)
